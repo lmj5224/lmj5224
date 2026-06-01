@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>출석부 관리 - 선생님용</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #f5f7fa;
+    min-height: 100vh;
+    color: #1a1a2e;
+  }
+
+  .topbar {
+    background: #1a237e;
+    color: #fff;
+    padding: 0 1.5rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .topbar h1 { font-size: 17px; font-weight: 700; flex: 1; }
+  .topbar .date-info { font-size: 13px; opacity: 0.75; }
+
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 0 1.5rem;
+  }
+
+  .tab {
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #777;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    color: #1a237e;
+    border-bottom-color: #1a237e;
+  }
+
+  .content { padding: 1.5rem; max-width: 900px; margin: 0 auto; }
+
+  /* Summary cards */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid #e8e8e8;
+  }
+
+  .stat-card .num {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-card .lbl { font-size: 12px; color: #888; }
+  .stat-card.present .num { color: #1565c0; }
+  .stat-card.absent .num { color: #c62828; }
+  .stat-card.rate .num { color: #2e7d32; }
+
+  /* Date selector */
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+  }
+
+  .date-row label { font-size: 14px; font-weight: 500; }
+
+  .date-row input[type="date"] {
+    padding: 8px 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: #1a1a2e;
+    background: #fff;
+  }
+
+  .date-row input[type="date"]:focus {
+    outline: none;
+    border-color: #1a237e;
+  }
+
+  .btn-sync {
+    padding: 8px 16px;
+    background: #1a237e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-sync:hover { background: #0d1464; }
+
+  /* Student list */
+  .student-list {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e8e8e8;
+    overflow: hidden;
+  }
+
+  .list-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.5fr 1fr;
+    padding: 10px 16px;
+    background: #f5f7fa;
+    font-size: 12px;
+    font-weight: 500;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e8e8e8;
+  }
+
+  .student-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.5fr 1fr;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    transition: background 0.15s;
+  }
+
+  .student-row:last-child { border-bottom: none; }
+  .student-row:hover { background: #fafafa; }
+
+  .student-name { font-size: 15px; font-weight: 500; }
+  .student-id { font-size: 13px; color: #999; }
+
+  .time-cell { font-size: 13px; color: #555; }
+
+  .status-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    border: 1.5px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .status-btn.present {
+    background: #e3f2fd;
+    color: #1565c0;
+    border-color: #90caf9;
+  }
+
+  .status-btn.absent {
+    background: #fff3f3;
+    color: #c62828;
+    border-color: #ef9a9a;
+  }
+
+  .status-btn.none {
+    background: #f5f5f5;
+    color: #999;
+    border-color: #e0e0e0;
+  }
+
+  .status-btn:hover { opacity: 0.8; }
+
+  .action-cell { display: flex; gap: 6px; }
+
+  .btn-small {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    color: #555;
+    transition: background 0.15s;
+  }
+
+  .btn-small:hover { background: #f5f5f5; }
+  .btn-small.danger { color: #c62828; border-color: #ef9a9a; }
+  .btn-small.danger:hover { background: #fff3f3; }
+
+  /* History tab */
+  .history-table {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e8e8e8;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 500px;
+  }
+
+  thead th {
+    background: #f5f7fa;
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: #888;
+    border-bottom: 1px solid #e8e8e8;
+  }
+
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #fafafa; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .badge.present { background: #e3f2fd; color: #1565c0; }
+  .badge.absent { background: #fff3f3; color: #c62828; }
+
+  /* Export section */
+  .export-section {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e8e8e8;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .export-section h3 { font-size: 15px; margin-bottom: 1rem; }
+
+  .export-btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .btn-export {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1.5px solid;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .btn-export.csv {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-color: #a5d6a7;
+  }
+
+  .btn-export.csv:hover { background: #c8e6c9; }
+
+  .btn-export.sheets {
+    background: #e3f2fd;
+    color: #1565c0;
+    border-color: #90caf9;
+  }
+
+  .btn-export.sheets:hover { background: #bbdefb; }
+
+  /* Config notice */
+  .config-notice {
+    background: #fffde7;
+    border: 1px solid #f9a825;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #7a5c00;
+    margin-bottom: 1.2rem;
+  }
+
+  .config-notice code {
+    background: #fff8e1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  /* hidden panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #aaa;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span>📚</span>
+  <h1>출석부 관리</h1>
+  <span class="date-info" id="topbar-date"></span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('today')">오늘 출석</div>
+  <div class="tab" onclick="switchTab('history')">전체 기록</div>
+  <div class="tab" onclick="switchTab('export')">내보내기</div>
+</div>
+
+<div class="content">
+
+  <!-- TODAY TAB -->
+  <div class="panel active" id="tab-today">
+
+    <div class="config-notice" id="config-notice">
+      ⚙️ <strong>설정 필요:</strong> 스크립트 상단의 <code>SCRIPT_URL</code>과 <code>STUDENTS</code> 명단을 수정하면 Google Sheets와 자동 연동됩니다.
+    </div>
+
+    <div class="stats">
+      <div class="stat-card present">
+        <div class="num" id="stat-present">0</div>
+        <div class="lbl">출석</div>
+      </div>
+      <div class="stat-card absent">
+        <div class="num" id="stat-absent">0</div>
+        <div class="lbl">결석</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" id="stat-total" style="color:#555">0</div>
+        <div class="lbl">전체</div>
+      </div>
+      <div class="stat-card rate">
+        <div class="num" id="stat-rate">0%</div>
+        <div class="lbl">출석률</div>
+      </div>
+    </div>
+
+    <div class="date-row">
+      <label>날짜</label>
+      <input type="date" id="date-picker" onchange="onDateChange()" />
+      <button class="btn-sync" onclick="syncToSheets()">📤 Sheets 동기화</button>
+    </div>
+
+    <div class="student-list">
+      <div class="list-header">
+        <div>이름</div>
+        <div>학번</div>
+        <div>체크 시간</div>
+        <div>상태</div>
+      </div>
+      <div id="student-rows"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div class="panel" id="tab-history">
+    <div class="history-table">
+      <table>
+        <thead>
+          <tr>
+            <th>날짜</th>
+            <th>이름</th>
+            <th>학번</th>
+            <th>시간</th>
+            <th>상태</th>
+            <th>방법</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+        </tbody>
+      </table>
+      <div class="empty-state" id="history-empty">아직 기록이 없습니다.</div>
+    </div>
+  </div>
+
+  <!-- EXPORT TAB -->
+  <div class="panel" id="tab-export">
+    <div class="export-section">
+      <h3>📊 데이터 내보내기</h3>
+      <div class="export-btn-row">
+        <button class="btn-export csv" onclick="exportCSV()">📥 CSV 다운로드</button>
+        <button class="btn-export sheets" onclick="openSheetsGuide()">📋 Sheets 연동 가이드 보기</button>
+      </div>
+    </div>
+
+    <div class="export-section">
+      <h3>📌 Google Apps Script 코드</h3>
+      <p style="font-size:13px; color:#555; margin-bottom:1rem; line-height:1.6">
+        아래 코드를 <strong>Google Apps Script</strong>에 붙여넣고 배포하면 QR 출석 및 이 관리 앱이 자동으로 Google Sheets에 기록합니다.
+      </p>
+      <div style="position:relative;">
+        <pre id="script-code" style="background:#1e1e2e; color:#cdd6f4; padding:1.2rem; border-radius:10px; font-size:12px; overflow-x:auto; line-height:1.6; white-space:pre-wrap; word-break:break-all;"></pre>
+        <button onclick="copyScript()" style="position:absolute; top:10px; right:10px; padding:5px 12px; background:#313244; color:#cdd6f4; border:none; border-radius:6px; font-size:12px; cursor:pointer;">복사</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===================================================
+// ▼ 설정 영역
+// ===================================================
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2sV5w1V9C3K0n2wO35xv4oncwPwdvWEvLQb65XyU2c2LlF0AIexja2GOkmlTq07bv/exec";
+
+const STUDENTS = [
+  { name: "장민석", id: "행동" },
+  { name: "황수영", id: "행동" },
+  { name: "한소은", id: "행동" },
+  { name: "양승식", id: "행동" },
+  { name: "김진영", id: "행동" },
+  { name: "박선우", id: "행동" },
+  { name: "양우진", id: "행동" },
+  { name: "김다영", id: "행동" },
+  { name: "김소희", id: "행동" },
+  { name: "최원제", id: "행동" },
+  { name: "서하영", id: "행동" },
+  { name: "이은선", id: "행동" },
+  { name: "조은비", id: "행동" },
+  { name: "박은주", id: "행동" },
+  { name: "김근혜", id: "행동" },
+  { name: "이진주", id: "행동" },
+  { name: "설광근", id: "행동" },
+  { name: "여지현", id: "행동" },
+  { name: "김민정", id: "행동" },
+  { name: "권수정", id: "행동" },
+  { name: "김민지", id: "행동" },
+  { name: "이재승", id: "행동" },
+  { name: "손혜령", id: "행동" },
+  { name: "최유지", id: "행동" },
+  { name: "이슬기", id: "행동" },
+  { name: "박영훈", id: "행동" },
+  { name: "박현우", id: "행동" },
+  { name: "오진주", id: "소나무" },
+  { name: "양혜나", id: "소나무" },
+  { name: "박진숙", id: "소나무" },
+  { name: "박지연", id: "소나무" },
+  { name: "봉효진", id: "소나무" },
+  { name: "이예닮", id: "소나무" },
+  { name: "김명민", id: "소나무" },
+  { name: "윤의현", id: "소나무" },
+  { name: "이예림", id: "소나무" },
+  { name: "용민석", id: "소나무" },
+  { name: "김영렬", id: "소나무" },
+  { name: "양혜림", id: "아름드리" },
+  { name: "유솔비", id: "아름드리" },
+  { name: "변유섭", id: "아름드리" },
+  { name: "강도윤", id: "아름드리" },
+  { name: "하유빈", id: "아름드리" },
+  { name: "차주희", id: "아름드리" },
+  { name: "조유정", id: "아름드리" },
+  { name: "강동균", id: "아름드리" },
+  { name: "김은지95", id: "아름드리" },
+  { name: "김건우", id: "아름드리" },
+  { name: "김다솜", id: "아름드리" },
+  { name: "박채희", id: "아름드리" },
+  { name: "송현주", id: "아름드리" },
+  { name: "반성태", id: "반석" },
+  { name: "김성훈", id: "반석" },
+  { name: "최재혁", id: "반석" },
+  { name: "원종보", id: "반석" },
+  { name: "국하빈", id: "반석" },
+  { name: "박상빈", id: "반석" },
+  { name: "김량수", id: "반석" },
+  { name: "김경민", id: "반석" },
+  { name: "최성민", id: "반석" },
+  { name: "한국인", id: "반석" },
+  { name: "한세희", id: "반석" },
+  { name: "김성식", id: "반석" },
+  { name: "김치헌", id: "반석" },
+  { name: "윤희정", id: "청도" },
+  { name: "한예지", id: "청도" },
+  { name: "조준규", id: "청도" },
+  { name: "주해지", id: "청도" },
+  { name: "김석화", id: "청도" },
+  { name: "김서희", id: "청도" },
+  { name: "송채현", id: "청도" },
+  { name: "김윤아", id: "청도" },
+  { name: "김주희", id: "청도" },
+  { name: "이민선", id: "청도" },
+  { name: "류성민", id: "청도" },
+  { name: "조준희", id: "청도" },
+  { name: "조신영", id: "청도" },
+  { name: "안중현", id: "청도" },
+  { name: "고경선", id: "청도" },
+  { name: "김주연", id: "청도" },
+  { name: "한태영", id: "첫열매" },
+  { name: "김종대", id: "첫열매" },
+  { name: "김준영", id: "첫열매" },
+  { name: "노시혜", id: "첫열매" },
+  { name: "김명아", id: "첫열매" },
+  { name: "박기운", id: "첫열매" },
+  { name: "박현빈", id: "첫열매" },
+  { name: "윤세한", id: "인제" },
+  { name: "김주원", id: "인제" },
+  { name: "김은재", id: "인제" },
+  { name: "최성빈", id: "인제" },
+  { name: "김기석", id: "인제" },
+  { name: "양현석", id: "인제" },
+  { name: "곽지원", id: "인제" },
+  { name: "강로이", id: "인제" },
+  { name: "박재윤", id: "인제" },
+  { name: "김지혜98", id: "인제" },
+  { name: "김규연", id: "인제" },
+  { name: "정주희", id: "혜안" },
+  { name: "유한별", id: "혜안" },
+  { name: "최고은", id: "혜안" },
+  { name: "김가영", id: "혜안" },
+  { name: "최예은", id: "혜안" },
+  { name: "김준석", id: "혜안" },
+  { name: "임효정", id: "혜안" },
+  { name: "김찬우", id: "혜안" },
+  { name: "신성진", id: "혜안" },
+  { name: "김정인", id: "혜안" },
+  { name: "김민하", id: "혜안" },
+  { name: "김가희", id: "하리보" },
+  { name: "윤예영", id: "하리보" },
+  { name: "박상연", id: "하리보" },
+  { name: "김예진", id: "하리보" },
+  { name: "임혜진", id: "하리보" },
+  { name: "원지은", id: "하리보" },
+  { name: "송은서", id: "하리보" },
+  { name: "신철호", id: "하리보" },
+  { name: "김태래", id: "하리보" },
+  { name: "김채영", id: "으뜸" },
+  { name: "박제우", id: "으뜸" },
+  { name: "허수경", id: "으뜸" },
+  { name: "윤동찬", id: "으뜸" },
+  { name: "김유민", id: "으뜸" },
+  { name: "안선민", id: "으뜸" },
+  { name: "박해성", id: "으뜸" },
+  { name: "정은주", id: "으뜸" },
+  { name: "진다솔", id: "으뜸" },
+  { name: "임하영", id: "으뜸" },
+  { name: "한승희", id: "으뜸" },
+  { name: "황용호", id: "으뜸" },
+  { name: "최한나", id: "수신" },
+  { name: "신혜란", id: "수신" },
+  { name: "박건", id: "수신" },
+  { name: "문선화", id: "수신" },
+  { name: "박요한", id: "수신" },
+  { name: "고재성", id: "수신" },
+  { name: "조성수", id: "수신" },
+  { name: "백정원", id: "수신" },
+  { name: "김예나", id: "수신" },
+  { name: "홍웅기", id: "수신" },
+  { name: "박효지", id: "수신" },
+  { name: "채수지", id: "소망" },
+  { name: "조진희", id: "소망" },
+  { name: "오영승", id: "소망" },
+  { name: "정혜연", id: "소망" },
+  { name: "최경진", id: "소망" },
+  { name: "이건희", id: "소망" },
+  { name: "정민주", id: "소망" },
+  { name: "정정원", id: "소망" },
+  { name: "이다래", id: "소망" },
+  { name: "강유전", id: "소망" },
+  { name: "박수지", id: "소망" },
+  { name: "김초은", id: "소망" },
+  { name: "안하은", id: "소망" },
+  { name: "천세라", id: "승전" },
+  { name: "신혜경", id: "승전" },
+  { name: "이혜리", id: "승전" },
+  { name: "이수인", id: "승전" },
+  { name: "이권민", id: "승전" },
+  { name: "이민혜", id: "승전" },
+  { name: "엄혜지", id: "승전" },
+  { name: "손채림", id: "승전" },
+  { name: "정윤아", id: "승전" },
+  { name: "송한솔", id: "승전" },
+  { name: "이승언", id: "승전" },
+  { name: "김은지01", id: "승전" },
+  { name: "권순한", id: "승전" },
+  { name: "김지혜95", id: "승전" },
+  { name: "김다인", id: "최고심" },
+  { name: "김승환", id: "최고심" },
+  { name: "손수민", id: "최고심" },
+  { name: "박은영", id: "최고심" },
+  { name: "이수민", id: "최고심" },
+  { name: "정소연", id: "최고심" },
+  { name: "방설희", id: "최고심" },
+  { name: "김예래", id: "최고심" },
+  { name: "장성진", id: "최고심" },
+  { name: "이민정", id: "최고심" },
+  { name: "박재환", id: "최고심" },
+  { name: "전영준", id: "정심" },
+  { name: "최서희", id: "정심" },
+  { name: "이수빈", id: "정심" },
+  { name: "현정빈", id: "정심" },
+  { name: "이선정", id: "정심" },
+  { name: "최은진", id: "정심" },
+  { name: "이승연", id: "정심" },
+  { name: "방은희", id: "정심" },
+  { name: "정진기", id: "정심" },
+  { name: "정병준", id: "정심" },
+  { name: "정태훈", id: "정심" },
+  { name: "김하빈", id: "정심" },
+  { name: "원성은", id: "정심" },
+  { name: "박영선", id: "정심" },
+  { name: "김현애", id: "정심" },
+  { name: "김정윤", id: "정심" },
+  { name: "박수빈", id: "정심" },
+  { name: "임보배", id: "정심" },
+];
+
+const CLASS_NAME = "출석부";
+
+// ===================================================
+
+const DAYS = ["일","월","화","수","목","금","토"];
+
+let attendance = JSON.parse(localStorage.getItem("attendance_v1") || "{}");
+let currentDate = getTodayStr();
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return `${d.getMonth()+1}/${d.getDate()}(${DAYS[d.getDay()]})`;
+}
+
+function formatDateKo(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return `${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`;
+}
+
+function init() {
+  const today = new Date();
+  document.getElementById("topbar-date").textContent = formatDateKo(getTodayStr());
+  document.getElementById("date-picker").value = currentDate;
+
+  if (SCRIPT_URL !== "여기에_구글_앱스_스크립트_URL_입력") {
+    document.getElementById("config-notice").style.display = "none";
+  }
+
+  renderStudents();
+  renderHistory();
+  renderScript();
+}
+
+function onDateChange() {
+  currentDate = document.getElementById("date-picker").value;
+  renderStudents();
+}
+
+function getRecord(date, name) {
+  if (!attendance[date]) attendance[date] = {};
+  return attendance[date][name] || { status: "none", time: "", method: "" };
+}
+
+function setRecord(date, name, status, time, method) {
+  if (!attendance[date]) attendance[date] = {};
+  attendance[date][name] = { status, time, method };
+  localStorage.setItem("attendance_v1", JSON.stringify(attendance));
+}
+
+function toggleStatus(name) {
+  const rec = getRecord(currentDate, name);
+  const now = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  let newStatus;
+  if (rec.status === "none") newStatus = "present";
+  else if (rec.status === "present") newStatus = "absent";
+  else newStatus = "none";
+  setRecord(currentDate, name, newStatus, newStatus === "present" ? now : "", "수동");
+  renderStudents();
+  renderHistory();
+}
+
+function renderStudents() {
+  const container = document.getElementById("student-rows");
+  let present = 0, absent = 0;
+
+  container.innerHTML = STUDENTS.map(s => {
+    const rec = getRecord(currentDate, s.name);
+    if (rec.status === "present") present++;
+    if (rec.status === "absent") absent++;
+
+    let btnClass = "none", btnText = "미체크", btnIcon = "⬜";
+    if (rec.status === "present") { btnClass = "present"; btnText = "출석"; btnIcon = "✅"; }
+    if (rec.status === "absent") { btnClass = "absent"; btnText = "결석"; btnIcon = "❌"; }
+
+    return `<div class="student-row">
+      <div>
+        <div class="student-name">${s.name}</div>
+      </div>
+      <div class="student-id">${s.id}</div>
+      <div class="time-cell">${rec.time || "-"}</div>
+      <div>
+        <button class="status-btn ${btnClass}" onclick="toggleStatus('${s.name}')">
+          ${btnIcon} ${btnText}
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+
+  const total = STUDENTS.length;
+  document.getElementById("stat-present").textContent = present;
+  document.getElementById("stat-absent").textContent = total - present;
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-rate").textContent = Math.round(present / total * 100) + "%";
+}
+
+function renderHistory() {
+  const tbody = document.getElementById("history-body");
+  const rows = [];
+
+  Object.keys(attendance).sort((a, b) => b.localeCompare(a)).forEach(date => {
+    Object.keys(attendance[date]).forEach(name => {
+      const rec = attendance[date][name];
+      if (rec.status === "none") return;
+      const stu = STUDENTS.find(s => s.name === name) || { id: "" };
+      rows.push({ date, name, id: stu.id, ...rec });
+    });
+  });
+
+  if (rows.length === 0) {
+    tbody.innerHTML = "";
+    document.getElementById("history-empty").style.display = "block";
+    return;
+  }
+
+  document.getElementById("history-empty").style.display = "none";
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${formatDateLabel(r.date)}</td>
+      <td>${r.name}</td>
+      <td>${r.id}</td>
+      <td>${r.time || "-"}</td>
+      <td><span class="badge ${r.status}">${r.status === "present" ? "출석" : "결석"}</span></td>
+      <td>${r.method || "수동"}</td>
+    </tr>
+  `).join("");
+}
+
+function exportCSV() {
+  const rows = [["날짜", "이름", "학번", "시간", "상태", "방법"]];
+
+  Object.keys(attendance).sort().forEach(date => {
+    STUDENTS.forEach(s => {
+      const rec = attendance[date]?.[s.name];
+      if (!rec || rec.status === "none") return;
+      rows.push([
+        formatDateLabel(date), s.name, s.id,
+        rec.time || "", rec.status === "present" ? "출석" : "결석", rec.method || "수동"
+      ]);
+    });
+  });
+
+  const csv = "\uFEFF" + rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `출석부_${CLASS_NAME}_${getTodayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function syncToSheets() {
+  if (SCRIPT_URL === "여기에_구글_앱스_스크립트_URL_입력") {
+    alert("SCRIPT_URL을 먼저 설정해주세요.\n내보내기 탭에서 Apps Script 코드를 확인하세요.");
+    return;
+  }
+
+  const dateData = attendance[currentDate] || {};
+  const records = STUDENTS.map(s => ({
+    name: s.name,
+    id: s.id,
+    status: dateData[s.name]?.status || "none",
+    time: dateData[s.name]?.time || "",
+    method: dateData[s.name]?.method || ""
+  }));
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "sync",
+        date: currentDate,
+        dateLabel: formatDateLabel(currentDate),
+        className: CLASS_NAME,
+        records
+      })
+    });
+    alert(`✅ ${formatDateLabel(currentDate)} 출석 데이터를 Google Sheets에 동기화했습니다.`);
+  } catch(e) {
+    alert("동기화 실패. URL을 확인해주세요.");
+  }
+}
+
+function openSheetsGuide() {
+  switchTab("export");
+}
+
+function renderScript() {
+  const code = `// ============================================
+// 출석부 Google Apps Script
+// ============================================
+
+const SPREADSHEET_ID = "여기에_스프레드시트_ID_입력";
+// (스프레드시트 URL에서 /d/ 뒤 부분)
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  if (data.action === "attend") {
+    // QR/링크로 개별 출석 체크
+    handleAttend(ss, data);
+  } else if (data.action === "sync") {
+    // 선생님 앱에서 전체 동기화
+    handleSync(ss, data);
+  }
+  
+  return ContentService
+    .createTextOutput(JSON.stringify({success: true}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function handleAttend(ss, data) {
+  const dateLabel = data.dateLabel; // "6/1(월)"
+  let sheet = ss.getSheetByName(dateLabel);
+  
+  // 날짜 시트가 없으면 자동 생성
+  if (!sheet) {
+    sheet = ss.insertSheet(dateLabel);
+    sheet.appendRow(["이름", "학번", "출석시간", "상태", "방법"]);
+  }
+  
+  // 이미 출석했는지 확인
+  const data_range = sheet.getDataRange().getValues();
+  for (let i = 1; i < data_range.length; i++) {
+    if (data_range[i][0] === data.name) {
+      return; // 중복 출석 방지
+    }
+  }
+  
+  sheet.appendRow([
+    data.name,
+    data.studentId,
+    data.timestamp,
+    "출석",
+    "QR/링크"
+  ]);
+}
+
+function handleSync(ss, data) {
+  const dateLabel = data.dateLabel;
+  let sheet = ss.getSheetByName(dateLabel);
+  
+  if (!sheet) {
+    sheet = ss.insertSheet(dateLabel);
+  } else {
+    sheet.clearContents();
+  }
+  
+  // 헤더
+  sheet.appendRow(["이름", "학번", "출석시간", "상태", "방법"]);
+  
+  // 전체 학생 기록
+  data.records.forEach(r => {
+    if (r.status === "none") return;
+    sheet.appendRow([
+      r.name,
+      r.id,
+      r.time,
+      r.status === "present" ? "출석" : "결석",
+      r.method || "수동"
+    ]);
+  });
+  
+  // 서식: 헤더 굵게
+  sheet.getRange("A1:E1").setFontWeight("bold");
+  sheet.setFrozenRows(1);
+}`;
+  document.getElementById("script-code").textContent = code;
+}
+
+function copyScript() {
+  navigator.clipboard.writeText(document.getElementById("script-code").textContent);
+  alert("코드가 복사되었습니다!");
+}
+
+function switchTab(id) {
+  document.querySelectorAll(".tab").forEach((t, i) => {
+    t.classList.toggle("active", ["today","history","export"][i] === id);
+  });
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("tab-" + id).classList.add("active");
+}
+
+init();
+</script>
+</body>
+</html>
