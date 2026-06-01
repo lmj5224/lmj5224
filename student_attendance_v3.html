@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>출석 체크</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Noto Sans KR',sans-serif;
+    background:#f0f4f8;
+    min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    padding:1.5rem;
+  }
+  .card{
+    background:#fff;border-radius:24px;
+    padding:2.5rem 2rem 2rem;
+    width:100%;max-width:400px;
+    box-shadow:0 4px 32px rgba(0,0,0,0.09);
+  }
+  .top{text-align:center;margin-bottom:2rem}
+  .icon-wrap{
+    width:68px;height:68px;background:#e8f0fe;
+    border-radius:50%;display:flex;align-items:center;justify-content:center;
+    margin:0 auto 1rem;font-size:30px;
+  }
+  h1{font-size:22px;font-weight:700;color:#1a237e;margin-bottom:6px}
+  .date-chip{
+    display:inline-block;background:#e8f0fe;color:#1a237e;
+    font-size:13px;font-weight:500;padding:5px 16px;border-radius:20px;
+  }
+  .input-wrap{position:relative;margin-bottom:1rem}
+  input[type=text]{
+    width:100%;padding:15px 16px;
+    font-size:18px;font-family:'Noto Sans KR',sans-serif;
+    border:2px solid #e0e0e0;border-radius:14px;
+    background:#fafafa;color:#1a1a2e;
+    transition:border-color .2s,box-shadow .2s;
+    -webkit-appearance:none;
+  }
+  input[type=text]:focus{
+    outline:none;border-color:#1a237e;background:#fff;
+    box-shadow:0 0 0 4px rgba(26,35,126,.08);
+  }
+  input[type=text]::placeholder{color:#bbb}
+  .dropdown{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;
+    background:#fff;border:1.5px solid #e0e0e0;border-radius:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:10;overflow:hidden;
+  }
+  .dropdown.show{display:block}
+  .dropdown-item{
+    padding:13px 16px;font-size:15px;cursor:pointer;
+    display:flex;align-items:center;gap:10px;transition:background .1s;
+  }
+  .dropdown-item:hover,.dropdown-item.active{background:#f0f4ff}
+  .zone-tag{
+    font-size:12px;color:#1a237e;background:#e8f0fe;
+    border-radius:6px;padding:2px 8px;margin-left:auto;white-space:nowrap;
+  }
+  .btn{
+    width:100%;padding:16px;background:#1a237e;color:#fff;
+    border:none;border-radius:14px;font-size:17px;font-weight:700;
+    font-family:'Noto Sans KR',sans-serif;cursor:pointer;
+    transition:background .2s,transform .1s;
+  }
+  .btn:hover{background:#0d1464}
+  .btn:active{transform:scale(.98)}
+  .btn:disabled{background:#b0bec5;cursor:not-allowed}
+  .error{
+    display:none;background:#fff3f3;color:#c62828;
+    border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:1rem;
+  }
+  .success{display:none;text-align:center;padding:1rem 0}
+  .check-wrap{
+    width:80px;height:80px;background:#e8f5e9;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 1.2rem;font-size:36px;
+    animation:pop .4s cubic-bezier(.175,.885,.32,1.275);
+  }
+  @keyframes pop{0%{transform:scale(0)}100%{transform:scale(1)}}
+  .success h2{font-size:21px;font-weight:700;color:#1a1a2e;margin-bottom:6px}
+  .success .sub{font-size:14px;color:#888;margin-bottom:1.2rem}
+  .info-box{
+    background:#f0f7ff;border-radius:12px;
+    padding:14px 18px;font-size:14px;color:#1a237e;line-height:1.8;
+  }
+  .btn-again{
+    margin-top:1.2rem;width:100%;padding:13px;
+    background:#f5f5f5;color:#555;border:none;border-radius:12px;
+    font-size:14px;font-weight:500;font-family:'Noto Sans KR',sans-serif;cursor:pointer;
+  }
+  .btn-again:hover{background:#ebebeb}
+  .spinner{
+    display:inline-block;width:18px;height:18px;
+    border:2px solid #fff;border-top-color:transparent;
+    border-radius:50%;animation:spin .7s linear infinite;
+    vertical-align:middle;margin-right:6px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    <div class="icon-wrap">📋</div>
+    <h1>출석 체크</h1>
+    <span class="date-chip" id="date-chip">날짜 확인 중...</span>
+  </div>
+
+  <div id="form-area">
+    <div class="error" id="err"></div>
+    <div class="input-wrap">
+      <input type="text" id="name-input" placeholder="이름을 입력하세요"
+             autocomplete="off" oninput="onInput()" onkeydown="onKey(event)" />
+      <div class="dropdown" id="dropdown"></div>
+    </div>
+    <button class="btn" id="submit-btn" onclick="submit()">
+      <span id="btn-spinner" style="display:none"><span class="spinner"></span></span>
+      <span id="btn-label">✅ 출석 체크</span>
+    </button>
+  </div>
+
+  <div class="success" id="success-area">
+    <div class="check-wrap">✅</div>
+    <h2 id="ok-name"></h2>
+    <p class="sub">출석이 기록되었습니다!</p>
+    <div class="info-box" id="ok-info"></div>
+    <button class="btn-again" onclick="reset()">다른 사람 출석 체크</button>
+  </div>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ▼ 설정 — 여기만 수정하세요
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz0SAOsJwAWEsrhEM4yL-7TY2ID-s8Y73GE6rZIAkuxSXe6H9mfBuwlHvjgfID-0oE/exec";
+
+const MEMBERS = [
+  { name:"장민석", zone:"행동" },
+  { name:"황수영", zone:"행동" },
+  { name:"한소은", zone:"행동" },
+  { name:"양승식", zone:"행동" },
+  { name:"김진영", zone:"행동" },
+  { name:"박선우", zone:"행동" },
+  { name:"양우진", zone:"행동" },
+  { name:"김다영", zone:"행동" },
+  { name:"김소희", zone:"행동" },
+  { name:"최원제", zone:"행동" },
+  { name:"서하영", zone:"행동" },
+  { name:"이은선", zone:"행동" },
+  { name:"조은비", zone:"행동" },
+  { name:"박은주", zone:"행동" },
+  { name:"김근혜", zone:"행동" },
+  { name:"이진주", zone:"행동" },
+  { name:"설광근", zone:"행동" },
+  { name:"여지현", zone:"행동" },
+  { name:"김민정", zone:"행동" },
+  { name:"권수정", zone:"행동" },
+  { name:"김민지", zone:"행동" },
+  { name:"이재승", zone:"행동" },
+  { name:"손혜령", zone:"행동" },
+  { name:"최유지", zone:"행동" },
+  { name:"이슬기", zone:"행동" },
+  { name:"박영훈", zone:"행동" },
+  { name:"박현우", zone:"행동" },
+  { name:"오진주", zone:"소나무" },
+  { name:"양혜나", zone:"소나무" },
+  { name:"박진숙", zone:"소나무" },
+  { name:"박지연", zone:"소나무" },
+  { name:"봉효진", zone:"소나무" },
+  { name:"이예닮", zone:"소나무" },
+  { name:"김명민", zone:"소나무" },
+  { name:"윤의현", zone:"소나무" },
+  { name:"이예림", zone:"소나무" },
+  { name:"용민석", zone:"소나무" },
+  { name:"김영렬", zone:"소나무" },
+  { name:"양혜림", zone:"아름드리" },
+  { name:"유솔비", zone:"아름드리" },
+  { name:"변유섭", zone:"아름드리" },
+  { name:"강도윤", zone:"아름드리" },
+  { name:"하유빈", zone:"아름드리" },
+  { name:"차주희", zone:"아름드리" },
+  { name:"조유정", zone:"아름드리" },
+  { name:"강동균", zone:"아름드리" },
+  { name:"김은지95", zone:"아름드리" },
+  { name:"김건우", zone:"아름드리" },
+  { name:"김다솜", zone:"아름드리" },
+  { name:"박채희", zone:"아름드리" },
+  { name:"송현주", zone:"아름드리" },
+  { name:"반성태", zone:"반석" },
+  { name:"김성훈", zone:"반석" },
+  { name:"최재혁", zone:"반석" },
+  { name:"원종보", zone:"반석" },
+  { name:"국하빈", zone:"반석" },
+  { name:"박상빈", zone:"반석" },
+  { name:"김량수", zone:"반석" },
+  { name:"김경민", zone:"반석" },
+  { name:"최성민", zone:"반석" },
+  { name:"한국인", zone:"반석" },
+  { name:"한세희", zone:"반석" },
+  { name:"김성식", zone:"반석" },
+  { name:"김치헌", zone:"반석" },
+  { name:"윤희정", zone:"청도" },
+  { name:"한예지", zone:"청도" },
+  { name:"조준규", zone:"청도" },
+  { name:"주해지", zone:"청도" },
+  { name:"김석화", zone:"청도" },
+  { name:"김서희", zone:"청도" },
+  { name:"송채현", zone:"청도" },
+  { name:"김윤아", zone:"청도" },
+  { name:"김주희", zone:"청도" },
+  { name:"이민선", zone:"청도" },
+  { name:"류성민", zone:"청도" },
+  { name:"조준희", zone:"청도" },
+  { name:"조신영", zone:"청도" },
+  { name:"안중현", zone:"청도" },
+  { name:"고경선", zone:"청도" },
+  { name:"김주연", zone:"청도" },
+  { name:"한태영", zone:"첫열매" },
+  { name:"김종대", zone:"첫열매" },
+  { name:"김준영", zone:"첫열매" },
+  { name:"노시혜", zone:"첫열매" },
+  { name:"김명아", zone:"첫열매" },
+  { name:"박기운", zone:"첫열매" },
+  { name:"박현빈", zone:"첫열매" },
+  { name:"윤세한", zone:"인제" },
+  { name:"김주원", zone:"인제" },
+  { name:"김은재", zone:"인제" },
+  { name:"최성빈", zone:"인제" },
+  { name:"김기석", zone:"인제" },
+  { name:"양현석", zone:"인제" },
+  { name:"곽지원", zone:"인제" },
+  { name:"강로이", zone:"인제" },
+  { name:"박재윤", zone:"인제" },
+  { name:"김지혜98", zone:"인제" },
+  { name:"김규연", zone:"인제" },
+  { name:"정주희", zone:"혜안" },
+  { name:"유한별", zone:"혜안" },
+  { name:"최고은", zone:"혜안" },
+  { name:"김가영", zone:"혜안" },
+  { name:"최예은", zone:"혜안" },
+  { name:"김준석", zone:"혜안" },
+  { name:"임효정", zone:"혜안" },
+  { name:"김찬우", zone:"혜안" },
+  { name:"신성진", zone:"혜안" },
+  { name:"김정인", zone:"혜안" },
+  { name:"김민하", zone:"혜안" },
+  { name:"김가희", zone:"하리보" },
+  { name:"윤예영", zone:"하리보" },
+  { name:"박상연", zone:"하리보" },
+  { name:"김예진", zone:"하리보" },
+  { name:"임혜진", zone:"하리보" },
+  { name:"원지은", zone:"하리보" },
+  { name:"송은서", zone:"하리보" },
+  { name:"신철호", zone:"하리보" },
+  { name:"김태래", zone:"하리보" },
+  { name:"김채영", zone:"으뜸" },
+  { name:"박제우", zone:"으뜸" },
+  { name:"허수경", zone:"으뜸" },
+  { name:"윤동찬", zone:"으뜸" },
+  { name:"김유민", zone:"으뜸" },
+  { name:"안선민", zone:"으뜸" },
+  { name:"박해성", zone:"으뜸" },
+  { name:"정은주", zone:"으뜸" },
+  { name:"진다솔", zone:"으뜸" },
+  { name:"임하영", zone:"으뜸" },
+  { name:"한승희", zone:"으뜸" },
+  { name:"황용호", zone:"으뜸" },
+  { name:"최한나", zone:"수신" },
+  { name:"신혜란", zone:"수신" },
+  { name:"박건", zone:"수신" },
+  { name:"문선화", zone:"수신" },
+  { name:"박요한", zone:"수신" },
+  { name:"고재성", zone:"수신" },
+  { name:"조성수", zone:"수신" },
+  { name:"백정원", zone:"수신" },
+  { name:"김예나", zone:"수신" },
+  { name:"홍웅기", zone:"수신" },
+  { name:"박효지", zone:"수신" },
+  { name:"채수지", zone:"소망" },
+  { name:"조진희", zone:"소망" },
+  { name:"오영승", zone:"소망" },
+  { name:"정혜연", zone:"소망" },
+  { name:"최경진", zone:"소망" },
+  { name:"이건희", zone:"소망" },
+  { name:"정민주", zone:"소망" },
+  { name:"정정원", zone:"소망" },
+  { name:"이다래", zone:"소망" },
+  { name:"강유전", zone:"소망" },
+  { name:"박수지", zone:"소망" },
+  { name:"김초은", zone:"소망" },
+  { name:"안하은", zone:"소망" },
+  { name:"천세라", zone:"승전" },
+  { name:"신혜경", zone:"승전" },
+  { name:"이혜리", zone:"승전" },
+  { name:"이수인", zone:"승전" },
+  { name:"이권민", zone:"승전" },
+  { name:"이민혜", zone:"승전" },
+  { name:"엄혜지", zone:"승전" },
+  { name:"손채림", zone:"승전" },
+  { name:"정윤아", zone:"승전" },
+  { name:"송한솔", zone:"승전" },
+  { name:"이승언", zone:"승전" },
+  { name:"김은지01", zone:"승전" },
+  { name:"권순한", zone:"승전" },
+  { name:"김지혜95", zone:"승전" },
+  { name:"김다인", zone:"최고심" },
+  { name:"김승환", zone:"최고심" },
+  { name:"손수민", zone:"최고심" },
+  { name:"박은영", zone:"최고심" },
+  { name:"이수민", zone:"최고심" },
+  { name:"정소연", zone:"최고심" },
+  { name:"방설희", zone:"최고심" },
+  { name:"김예래", zone:"최고심" },
+  { name:"장성진", zone:"최고심" },
+  { name:"이민정", zone:"최고심" },
+  { name:"박재환", zone:"최고심" },
+  { name:"전영준", zone:"정심" },
+  { name:"최서희", zone:"정심" },
+  { name:"이수빈", zone:"정심" },
+  { name:"현정빈", zone:"정심" },
+  { name:"이선정", zone:"정심" },
+  { name:"최은진", zone:"정심" },
+  { name:"이승연", zone:"정심" },
+  { name:"방은희", zone:"정심" },
+  { name:"정진기", zone:"정심" },
+  { name:"정병준", zone:"정심" },
+  { name:"정태훈", zone:"정심" },
+  { name:"김하빈", zone:"정심" },
+  { name:"원성은", zone:"정심" },
+  { name:"박영선", zone:"정심" },
+  { name:"김현애", zone:"정심" },
+  { name:"김정윤", zone:"정심" },
+  { name:"박수빈", zone:"정심" },
+  { name:"임보배", zone:"정심" },
+];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const DAYS = ["일","월","화","수","목","금","토"];
+let selectedMember = null;
+let activeIdx = -1;
+let filtered = [];
+
+function getToday() {
+  const d = new Date();
+  const m = d.getMonth()+1, day = d.getDate(), dow = DAYS[d.getDay()];
+  return {
+    label:     `${m}월 ${day}일 (${dow})`,
+    dateShort: `${m}/${day}`,          // 시트 헤더와 일치: "6/1"
+    time: d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})
+  };
+}
+
+function init() {
+  document.getElementById("date-chip").textContent = getToday().label;
+}
+
+function onInput() {
+  const val = document.getElementById("name-input").value.trim();
+  selectedMember = null;
+  document.getElementById("err").style.display = "none";
+  if (!val) { closeDropdown(); return; }
+
+  filtered = MEMBERS.filter(m => m.name.includes(val));
+  activeIdx = filtered.length === 1 ? 0 : -1;
+  if (!filtered.length) { closeDropdown(); return; }
+  renderDropdown(val);
+  document.getElementById("dropdown").classList.add("show");
+}
+
+function renderDropdown(val) {
+  val = val || document.getElementById("name-input").value.trim();
+  document.getElementById("dropdown").innerHTML = filtered.map((m,i) =>
+    `<div class="dropdown-item ${i===activeIdx?'active':''}" onclick="select(${i})">
+      <span>${m.name.replace(val,`<strong style="color:#1a237e">${val}</strong>`)}</span>
+      <span class="zone-tag">${m.zone}</span>
+    </div>`
+  ).join("");
+}
+
+function onKey(e) {
+  const ddOpen = document.getElementById("dropdown").classList.contains("show");
+  if (!ddOpen) { if(e.key==="Enter") submit(); return; }
+  if (e.key==="ArrowDown") { activeIdx=Math.min(activeIdx+1,filtered.length-1); renderDropdown(); e.preventDefault(); }
+  else if (e.key==="ArrowUp") { activeIdx=Math.max(activeIdx-1,0); renderDropdown(); e.preventDefault(); }
+  else if (e.key==="Enter") { if(activeIdx>=0) select(activeIdx); e.preventDefault(); }
+  else if (e.key==="Escape") closeDropdown();
+}
+
+function select(i) {
+  selectedMember = filtered[i];
+  document.getElementById("name-input").value = selectedMember.name;
+  closeDropdown();
+}
+
+function closeDropdown() {
+  document.getElementById("dropdown").classList.remove("show");
+}
+
+async function submit() {
+  const raw = document.getElementById("name-input").value.trim();
+  const errEl = document.getElementById("err");
+  if (!raw) { showErr("이름을 입력해주세요."); return; }
+
+  const member = selectedMember || MEMBERS.find(m => m.name === raw);
+  if (!member) { showErr("명단에 없는 이름입니다. 다시 확인해주세요."); return; }
+
+  setLoading(true);
+  const today = getToday();
+
+  const payload = {
+    action:    "attend",
+    name:      member.name,
+    zone:      member.zone,
+    dateShort: today.dateShort,   // "6/1" — 시트 헤더 열 이름과 동일
+    dateLabel: today.label,
+    timestamp: today.time
+  };
+
+  try {
+    if (SCRIPT_URL !== "여기에_앱스스크립트_URL_입력") {
+      await fetch(SCRIPT_URL, {
+        method:"POST", mode:"no-cors",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(payload)
+      });
+    } else {
+      await new Promise(r=>setTimeout(r,800));
+    }
+    showSuccess(member, today);
+  } catch(e) {
+    showErr("전송 실패. 다시 시도해주세요.");
+    setLoading(false);
+  }
+}
+
+function showErr(msg) {
+  const el = document.getElementById("err");
+  el.textContent = msg; el.style.display = "block";
+}
+
+function setLoading(on) {
+  document.getElementById("submit-btn").disabled = on;
+  document.getElementById("btn-spinner").style.display = on ? "inline":"none";
+  document.getElementById("btn-label").textContent = on ? "전송 중...":"✅ 출석 체크";
+}
+
+function showSuccess(member, today) {
+  document.getElementById("form-area").style.display = "none";
+  document.getElementById("success-area").style.display = "block";
+  document.getElementById("ok-name").textContent = `${member.name}님, 출석 완료! 👋`;
+  document.getElementById("ok-info").innerHTML =
+    `📅 <strong>${today.label}</strong><br>🕐 ${today.time} &nbsp;|&nbsp; 📍 ${member.zone}`;
+}
+
+function reset() {
+  document.getElementById("form-area").style.display = "block";
+  document.getElementById("success-area").style.display = "none";
+  document.getElementById("name-input").value = "";
+  document.getElementById("err").style.display = "none";
+  selectedMember = null;
+  setLoading(false);
+}
+
+document.addEventListener("click", e => {
+  if (!e.target.closest(".input-wrap")) closeDropdown();
+});
+
+init();
+</script>
+</body>
+</html>
